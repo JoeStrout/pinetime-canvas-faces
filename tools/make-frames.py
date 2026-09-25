@@ -14,49 +14,12 @@ use --center X,Y to choose another. Needs Pillow.
 """
 import argparse
 import math
-import struct
 import sys
 from pathlib import Path
 
 from PIL import Image
 
-# LVGL 7 color formats (lv_img_cf_t)
-CF_TRUE_COLOR_ALPHA = 5
-CF_INDEXED_4BIT = 9
-
-
-def header(cf: int, width: int, height: int) -> bytes:
-    return struct.pack("<I", cf | (width << 10) | (height << 21))
-
-
-def encode_true_color_alpha(img: Image.Image) -> bytes:
-    """RGB565 with bytes swapped (LV_COLOR_16_SWAP), then 8-bit alpha: InfiniTime's ARGB8565_RBSWAP."""
-    out = bytearray(header(CF_TRUE_COLOR_ALPHA, img.width, img.height))
-    data = img.tobytes()
-    for i in range(0, len(data), 4):
-        r, g, b, a = data[i:i + 4]
-        c16 = ((r * 31 + 127) // 255) << 11 | ((g * 63 + 127) // 255) << 5 | ((b * 31 + 127) // 255)
-        out += bytes((c16 >> 8, c16 & 0xFF, a))
-    return bytes(out)
-
-
-def encode_indexed4(img: Image.Image) -> bytes:
-    """16-color palette with alpha: about a sixth of the size of true color."""
-    quantized = img.quantize(colors=16, method=Image.Quantize.FASTOCTREE)
-    palette = quantized.getpalette(rawmode="RGBA") or []
-    palette = (palette + [0] * 64)[:64]
-    out = bytearray(header(CF_INDEXED_4BIT, img.width, img.height))
-    for i in range(16):
-        r, g, b, a = palette[i * 4:i * 4 + 4]
-        out += bytes((b, g, r, a))  # lv_color32_t order
-    pixels = list(quantized.tobytes())
-    for y in range(img.height):
-        row = pixels[y * img.width:(y + 1) * img.width]
-        if len(row) % 2:
-            row.append(0)
-        out += bytes((row[i] << 4) | row[i + 1] for i in range(0, len(row), 2))
-    return bytes(out)
-
+import lvimage
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -65,8 +28,8 @@ def main() -> int:
     parser.add_argument("--name", default="frame", help="file name prefix (default: frame)")
     parser.add_argument("--frames", type=int, default=60, help="number of angles (default: 60)")
     parser.add_argument("--center", help="X,Y in the picture that sits at the end of the arm (default: its centre)")
-    parser.add_argument("--format", choices=["indexed4", "truecolor"], default="indexed4",
-                        help="indexed4: 16 colors, small (default); truecolor: full color, ~6x larger")
+    parser.add_argument("--format", choices=lvimage.FORMATS, default="indexed4",
+                        help="indexed4: 16 colors, small (default); indexed8: 256 colors; truecolor: full color, ~6x larger")
     parser.add_argument("--preview", help="also write a PNG contact sheet of all frames")
     args = parser.parse_args()
 
@@ -87,13 +50,12 @@ def main() -> int:
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     digits = len(str(args.frames - 1))
-    encode = encode_indexed4 if args.format == "indexed4" else encode_true_color_alpha
     frames = []
     total = 0
     for i in range(args.frames):
         angle = i * 360 / args.frames
         frame = canvas.rotate(-angle, resample=Image.Resampling.BICUBIC).convert("RGBA")
-        data = encode(frame)
+        data = lvimage.encode(frame, args.format)
         (outdir / f"{args.name}{i:0{digits}d}.bin").write_bytes(data)
         frames.append(frame)
         total += len(data)

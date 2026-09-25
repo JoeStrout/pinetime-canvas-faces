@@ -15,6 +15,7 @@ faces/<name>/*              its assets         ->  /canvas/<name>/ on the watch
 tools/check.py              structural checks run by CI
 tools/install-sim.sh        copy faces into an InfiniSim flash image
 tools/make-frames.py        pre-render rotated frames for image hands
+tools/make-image.py         resize and convert a picture to an LVGL .bin image
 ```
 
 Face folder names must be short: `<name>.cfg` has to fit in 31 characters.
