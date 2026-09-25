@@ -121,4 +121,13 @@ The faces in `faces/` are licensed under [Creative Commons Attribution 4.0 Inter
 (CC BY 4.0): use, share and adapt them freely, including commercially, as long as you credit the
 author. Each face's author is recorded in its folder's commit history.
 
+The exception is any face whose `.cfg` starts with an `SPDX-License-Identifier` comment naming a
+different license. The recreations of InfiniTime's built-in faces (analog, casio, digital, infineat,
+pinetimestyle, the pride flags, terminal) are derived from
+[InfiniTime](https://github.com/InfiniTimeOrg/InfiniTime)'s source and so are
+[GPL-3.0](LICENSES/GPL-3.0.txt), like InfiniTime itself.
+
+If your face adapts someone else's work, add an SPDX line with the license that work requires, and
+say where it came from on the next line.
+
 The scripts in `tools/` are under the [MIT License](tools/LICENSE).

@@ -21,6 +21,9 @@ MAX_LOADED_FONTS = 4
 ELEMENTS = {"text", "image", "rect", "line", "arc", "hand", "ticks", "battery", "bar"}
 DIRECTIVES = {"requires", "name", "bg"}
 
+# Licenses a face may declare with an SPDX line; faces without one are CC-BY-4.0 (LICENSE)
+KNOWN_LICENSES = {"CC-BY-4.0", "GPL-3.0-only", "GPL-3.0-or-later"}
+
 # Files installed by the standard InfiniTime resources package
 STANDARD_RESOURCES = {
     "/fonts/teko.bin",
@@ -63,6 +66,9 @@ def check_face(face_dir: Path) -> list[str]:
         if len(line.encode("utf-8")) > MAX_LINE:
             err(f"line longer than {MAX_LINE} bytes", number)
         stripped = line.strip()
+        spdx = re.match(r"#\s*SPDX-License-Identifier:\s*(\S+)", stripped)
+        if spdx and spdx.group(1) not in KNOWN_LICENSES:
+            err(f"license {spdx.group(1)} has no text in this repository", number)
         if not stripped or stripped.startswith("#"):
             continue
         command = stripped.split()[0]
