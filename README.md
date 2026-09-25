@@ -14,6 +14,7 @@ faces/<name>/<name>.cfg     the face           ->  /canvas/<name>.cfg on the wat
 faces/<name>/*              its assets         ->  /canvas/<name>/ on the watch
 tools/check.py              structural checks run by CI
 tools/install-sim.sh        copy faces into an InfiniSim flash image
+tools/make-frames.py        pre-render rotated frames for image hands
 ```
 
 Face folder names must be short: `<name>.cfg` has to fit in 31 characters.
@@ -64,7 +65,7 @@ text 120 180 color=#FFCC00 align=center "Taco Tuesday!" if dow=2 hour>=11 hour<1
 | `rect` | `x y w h` | `radius`, `border`, `border_color` |
 | `line` | `x1 y1 x2 y2` | square ends unless `rounded=on` |
 | `arc` | `x y w h` | `start`/`end` in degrees, 0 = 12 o'clock, clockwise |
-| `hand hour\|minute\|second\|steps` | `x y w h` (pivots on the box centre) | `radius` = length, `inner` = start distance (negative for a tail); `steps` sweeps once per step goal |
+| `hand hour\|minute\|second\|steps` | `x y w h` (pivots on the box centre) | `radius` = length, `inner` = start distance (negative for a tail); `steps` sweeps once per step goal; `image=` draws a picture instead of a line (see below) |
 | `ticks` | `x y w h` | `count`, `outer`, `inner`, optional `start`/`end` |
 | `battery` | `x y` | battery icon with fill level |
 | `bar` | `x y w h` | `value=<field> min= max= dir=up\|down\|left\|right` |
@@ -79,6 +80,30 @@ Fonts: `jetbrains_mono_bold_20` (default, includes the UI icons), `jetbrains_mon
 `jetbrains_mono_76`, `jetbrains_mono_extrabold_compressed`, `open_sans_light`, `lv_font_sys_48`,
 `fontawesome_weathericons`, or a font file such as `/canvas/<name>/myfont.bin` (at most 4 per face).
 The larger built-in fonts contain digits only.
+
+### Image hands
+
+Canvas can't rotate images, so a hand drawn as a picture uses one pre-rendered frame per angle.
+The frame nearest the hand's angle is centred on the point `radius` pixels out from the pivot:
+
+```
+hand minute 0 0 240 240 radius=80 width=6 color=#000000
+hand minute 0 0 240 240 radius=80 image=/canvas/mickey/glove{frame:02}.bin frames=60
+```
+
+`{frame}` is replaced by the frame number, 0 at 12 o'clock counting clockwise (`{frame:02}` pads it to
+two digits). `frames` defaults to 60. The pair above draws a line for the arm and a glove at its end;
+the same frames can serve both the hour and the minute hand.
+
+Make the frames with `tools/make-frames.py` from one picture drawn pointing up (needs Pillow):
+
+```sh
+tools/make-frames.py glove.png faces/mickey --name glove --center 14,26 --preview sheet.png
+```
+
+`--center` is the point in the picture that sits at the end of the arm (default: the middle). Frames
+are 16-colour by default, which keeps 60 small gloves to about 120 KB; `--format truecolor` gives full
+colour at about six times the size.
 
 ### Fields
 

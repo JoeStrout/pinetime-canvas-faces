@@ -96,6 +96,11 @@ def check_face(face_dir: Path) -> list[str]:
             tokens = stripped.split()
             if len(tokens) >= 4:
                 paths.append(tokens[3])
+        hand_image = re.search(r'\bimage=(/\S+)', stripped)
+        if command == "hand" and hand_image:
+            frames = re.search(r'\bframes=(\d+)', stripped)
+            count = int(frames.group(1)) if frames else 60
+            paths += sorted({expand_frame(hand_image.group(1), i) for i in range(count)})
         for path in paths:
             check_asset(path, name, face_dir, lambda msg: err(msg, number))
 
@@ -106,6 +111,15 @@ def check_face(face_dir: Path) -> list[str]:
     if len(fonts) > MAX_LOADED_FONTS:
         err(f"{len(fonts)} font files; the watch loads at most {MAX_LOADED_FONTS}")
     return errors
+
+
+def expand_frame(template: str, frame: int) -> str:
+    """Fills in {frame}, {frame:N} or {frame:0N} the way the firmware does."""
+    def fill(match):
+        fmt = match.group(1) or ""
+        width = int(fmt) if fmt else 1
+        return str(frame).rjust(width, "0" if fmt.startswith("0") else " ")
+    return re.sub(r"\{frame(?::(\d+))?\}", fill, template)
 
 
 def check_asset(path: str, name: str, face_dir: Path, err) -> None:
