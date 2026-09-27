@@ -29,8 +29,17 @@ def encode_true_color_alpha(img: Image.Image) -> bytes:
 def encode_indexed(img: Image.Image, bits: int) -> bytes:
     """Palette image with per-entry alpha: 4 bits (16 colors) or 8 bits (256 colors) per pixel."""
     colors = 1 << bits
-    quantized = img.convert("RGBA").quantize(colors=colors, method=Image.Quantize.FASTOCTREE)
-    palette = quantized.getpalette(rawmode="RGBA") or []
+    img = img.convert("RGBA")
+    exact = img.getcolors(colors)
+    if exact is not None:
+        # Few enough colors already (e.g. pre-dithered): keep them exactly, since the
+        # quantizer can merge neighbouring shades even when it doesn't need to
+        palette = [channel for _, color in exact for channel in color]
+        index = {color: i for i, (_, color) in enumerate(exact)}
+        quantized = Image.frombytes("L", img.size, bytes(index[p] for p in img.getdata()))
+    else:
+        quantized = img.quantize(colors=colors, method=Image.Quantize.FASTOCTREE)
+        palette = quantized.getpalette(rawmode="RGBA") or []
     palette = (palette + [0] * (colors * 4))[:colors * 4]
     cf = CF_INDEXED_4BIT if bits == 4 else CF_INDEXED_8BIT
     out = bytearray(header(cf, img.width, img.height))
